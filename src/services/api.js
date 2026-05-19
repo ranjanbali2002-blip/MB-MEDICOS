@@ -60,6 +60,8 @@ export const authApi = {
   login: ({ identifier, password }) => api.post('/auth/login', { identifier, password }),
   logout: () => api.post('/auth/logout'),
   me: () => api.get('/auth/me'),
+  verifyEmail: (email, otp) => api.post('/auth/verify-email', { email, otp }),
+  resendOtp: (email) => api.post('/auth/resend-otp', { email }),
 }
 
 // Medicines

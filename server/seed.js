@@ -29,6 +29,7 @@ const users = [
     password: 'Ranjan2002',
     phone: '9999000001',
     role: 'admin',
+    isEmailVerified: true,
   },
   {
     name: 'Rajan Kumar',
@@ -36,6 +37,7 @@ const users = [
     password: 'Customer@123',
     phone: '9876543210',
     role: 'customer',
+    isEmailVerified: true,
     addresses: [
       { label: 'Home', address: '42, Green Park, New Delhi - 110016', lat: 28.5672, lng: 77.2100, isDefault: true },
       { label: 'Office', address: 'Plot 7, Sector 44, Gurugram - 122003', lat: 28.4595, lng: 77.0266, isDefault: false },
@@ -47,6 +49,7 @@ const users = [
     password: 'Driver@123',
     phone: '9876500001',
     role: 'driver',
+    isEmailVerified: true,
     vehicle: 'Honda Activa - DL 5S AB 1234',
     isOnline: true,
     isVerified: true,
@@ -62,6 +65,7 @@ const users = [
     password: 'Driver@123',
     phone: '9876500002',
     role: 'driver',
+    isEmailVerified: true,
     vehicle: 'TVS Jupiter - DL 7M CD 5678',
     isOnline: false,
     isVerified: true,

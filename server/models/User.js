@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
   walletBalance: { type: Number, default: 0 },
   prescriptions: [{ filename: String, uploadedAt: Date }],
 
+  // Email & phone verification
+  isEmailVerified: { type: Boolean, default: false },
+  emailOtp: { type: String },
+  emailOtpExpiry: { type: Date },
+
   // Driver-specific
   vehicle: { type: String, default: 'Bike' },
   isOnline: { type: Boolean, default: false },
