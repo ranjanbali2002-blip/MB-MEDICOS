@@ -16,8 +16,10 @@ const io = new Server(server, {
   },
 })
 
-// Connect to MongoDB
-connectDB()
+// Connect to MongoDB then auto-seed if needed
+connectDB().then(() => {
+  require('./seed').autoSeed()
+})
 
 // Middleware
 app.use(cors({

@@ -72,10 +72,34 @@ const users = [
   },
 ]
 
+// Auto-seed: only runs if admin doesn't exist yet (safe to call on every boot)
+async function autoSeed() {
+  try {
+    const adminExists = await User.findOne({ username: 'Ranjan1903' })
+    if (adminExists) {
+      console.log('Database already seeded — skipping')
+      return
+    }
+    console.log('No admin found — seeding database...')
+    await runSeed()
+  } catch (err) {
+    console.error('Auto-seed error:', err)
+  }
+}
+
 async function seed() {
   try {
     await connectDB()
+    await runSeed()
+    process.exit(0)
+  } catch (err) {
+    console.error('Seed error:', err)
+    process.exit(1)
+  }
+}
 
+async function runSeed() {
+  try {
     // Clear existing data
     await Promise.all([
       User.deleteMany({}),
@@ -181,12 +205,13 @@ async function seed() {
     console.log('  Admin:    username: Ranjan1903  / Ranjan2002')
     console.log('  Customer: customer@medidrop.com / Customer@123')
     console.log('  Driver:   driver@medidrop.com   / Driver@123')
-
-    process.exit(0)
   } catch (err) {
     console.error('Seed error:', err)
-    process.exit(1)
+    throw err
   }
 }
 
-seed()
+module.exports = { autoSeed }
+
+// Run directly: node seed.js
+if (require.main === module) seed()
