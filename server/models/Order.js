@@ -44,11 +44,25 @@ const orderSchema = new mongoose.Schema({
   driverReview: { type: String, default: '' },
 }, { timestamps: true })
 
+// Generate a unique order ID: MB-YYYYMMDD-XXXXXXX
+function generateOrderId() {
+  const date = new Date()
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  const rand = Math.random().toString(36).substring(2, 9).toUpperCase()
+  return `MB-${y}${m}${d}-${rand}`
+}
+
 // Auto-generate orderId before save
 orderSchema.pre('save', async function (next) {
   if (!this.orderId) {
-    const count = await mongoose.model('Order').countDocuments()
-    this.orderId = `MD-${new Date().getFullYear()}-${String(count + 1).padStart(4, '0')}`
+    // Retry up to 5 times in case of collision (extremely unlikely)
+    for (let i = 0; i < 5; i++) {
+      const id = generateOrderId()
+      const exists = await mongoose.model('Order').findOne({ orderId: id })
+      if (!exists) { this.orderId = id; break }
+    }
   }
   // Add initial timeline entry
   if (this.timeline.length === 0) {
