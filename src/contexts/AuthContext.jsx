@@ -35,18 +35,21 @@ export function AuthProvider({ children }) {
 
   const login = async (identifier, password) => {
     const { data } = await authApi.login({ identifier, password })
+    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken)
     setUser(data.user)
     return data.user
   }
 
   const register = async (payload) => {
     const { data } = await authApi.register(payload)
+    if (data.accessToken) localStorage.setItem('accessToken', data.accessToken)
     setUser(data.user)
     return data.user
   }
 
   const logout = async () => {
     try { await authApi.logout() } catch {}
+    localStorage.removeItem('accessToken')
     setUser(null)
   }
 
