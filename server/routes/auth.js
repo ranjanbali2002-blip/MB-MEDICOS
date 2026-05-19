@@ -11,7 +11,8 @@ const signTokens = (id) => {
 }
 
 const setCookies = (res, accessToken, refreshToken) => {
-  const opts = { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production' }
+  const isProd = process.env.NODE_ENV === 'production'
+  const opts = { httpOnly: true, sameSite: isProd ? 'none' : 'lax', secure: isProd }
   res.cookie('accessToken', accessToken, { ...opts, maxAge: 15 * 60 * 1000 })
   res.cookie('refreshToken', refreshToken, { ...opts, maxAge: 7 * 24 * 60 * 60 * 1000 })
 }
