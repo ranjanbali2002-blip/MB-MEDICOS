@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Upload, ArrowRight, Star, Shield, Clock, Package,
   CheckCircle, Smartphone, Zap, Heart, ChevronLeft, ChevronRight,
@@ -8,7 +8,22 @@ import {
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import SearchBar from '../components/ui/SearchBar'
-import { categories, medicines, testimonials } from '../data/mockData'
+import { testimonials } from '../data/mockData'
+import { medicinesApi } from '../services/api'
+import axios from 'axios'
+
+const BASE = import.meta.env.VITE_API_URL || ''
+
+const CATEGORIES = [
+  { id: 1, name: 'Antibiotics', icon: '💊', color: 'bg-blue-100 text-blue-600' },
+  { id: 2, name: 'Pain Relief', icon: '🩹', color: 'bg-red-100 text-red-600' },
+  { id: 3, name: 'Vitamins', icon: '🌿', color: 'bg-green-100 text-green-600' },
+  { id: 4, name: 'Heart Care', icon: '❤️', color: 'bg-pink-100 text-pink-600' },
+  { id: 5, name: 'Diabetes', icon: '🩺', color: 'bg-purple-100 text-purple-600' },
+  { id: 6, name: 'Skincare', icon: '✨', color: 'bg-yellow-100 text-yellow-600' },
+  { id: 7, name: 'Eye Care', icon: '👁️', color: 'bg-cyan-100 text-cyan-600' },
+  { id: 8, name: 'Baby Care', icon: '👶', color: 'bg-orange-100 text-orange-600' },
+]
 
 function FadeIn({ children, delay = 0, className = '' }) {
   return (
@@ -24,6 +39,11 @@ function FadeIn({ children, delay = 0, className = '' }) {
 }
 
 function HeroSection({ setActiveView }) {
+  const [stats, setStats] = useState({ customers: 0, ordersToday: 0 })
+  useEffect(() => {
+    axios.get(`${BASE}/api/public/stats`).then(r => setStats(r.data)).catch(() => {})
+  }, [])
+
   return (
     <section className="relative min-h-screen flex items-center gradient-hero dark:bg-none dark:bg-slate-900 pt-28 pb-16 overflow-hidden">
       {/* Decorative blobs */}
@@ -151,7 +171,7 @@ function HeroSection({ setActiveView }) {
               className="absolute -left-6 top-8 bg-white dark:bg-slate-800 rounded-2xl shadow-card p-4 border border-slate-100 dark:border-slate-700"
             >
               <p className="text-xs text-slate-500 mb-1">Happy Customers</p>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">12,450+</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{stats.customers > 0 ? `${stats.customers}+` : '—'}</p>
               <div className="flex -space-x-1 mt-2">
                 {['🙂', '😊', '😄', '🥰'].map((e, i) => (
                   <span key={i} className="text-base">{e}</span>
@@ -168,7 +188,7 @@ function HeroSection({ setActiveView }) {
                 <TrendingUp className="w-4 h-4 text-primary-500" />
                 <p className="text-xs font-semibold text-slate-500">Orders Today</p>
               </div>
-              <p className="text-2xl font-black text-slate-800 dark:text-white">2,341</p>
+              <p className="text-2xl font-black text-slate-800 dark:text-white">{stats.ordersToday ?? '—'}</p>
             </motion.div>
           </motion.div>
         </div>
@@ -184,12 +204,12 @@ function CategoriesSection() {
         <FadeIn>
           <div className="text-center mb-12">
             <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-3">Shop by Category</h2>
-            <p className="text-slate-500 dark:text-slate-400">Browse 500+ medicines across all health categories</p>
+            <p className="text-slate-500 dark:text-slate-400">Browse medicines across all health categories</p>
           </div>
         </FadeIn>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
-          {categories.map((cat, i) => (
+          {CATEGORIES.map((cat, i) => (
             <FadeIn key={cat.id} delay={i * 0.05}>
               <motion.div
                 whileHover={{ y: -6, scale: 1.04 }}
@@ -214,7 +234,12 @@ function CategoriesSection() {
 
 function FeaturedProducts({ setActiveView }) {
   const [activeIdx, setActiveIdx] = useState(0)
-  const featured = medicines.filter(m => m.inStock).slice(0, 6)
+  const [featured, setFeatured] = useState([])
+  useEffect(() => {
+    medicinesApi.getAll({ inStock: true, limit: 6 })
+      .then(r => setFeatured(r.data.medicines || []))
+      .catch(() => {})
+  }, [])
 
   return (
     <section className="py-16 bg-slate-50 dark:bg-slate-950">
@@ -256,15 +281,18 @@ function FeaturedProducts({ setActiveView }) {
                 <p className="text-xs text-slate-400 mb-3">{med.brand}</p>
                 <div className="flex items-center gap-1 mb-3">
                   <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
-                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{med.rating}</span>
-                  <span className="text-xs text-slate-400">({med.reviews})</span>
+                  <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{med.rating?.toFixed(1) || '5.0'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-base font-black text-slate-800 dark:text-white">₹{med.price}</span>
                     <span className="text-xs text-slate-400 line-through ml-1">₹{med.mrp}</span>
                   </div>
-                  <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-lg">{med.discount}% off</span>
+                  {med.mrp > med.price && (
+                    <span className="text-xs font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded-lg">
+                      {Math.round((1 - med.price / med.mrp) * 100)}% off
+                    </span>
+                  )}
                 </div>
                 <Button size="sm" fullWidth className="mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                   Add to Cart

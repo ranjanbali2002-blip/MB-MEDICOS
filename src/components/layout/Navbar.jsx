@@ -18,7 +18,7 @@ export default function Navbar({ activeView, setActiveView, setShowAuth }) {
   const { user, logout } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [cartCount] = useState(3)
+  const [cartCount] = useState(0)
 
   const handleLogout = async () => {
     await logout()

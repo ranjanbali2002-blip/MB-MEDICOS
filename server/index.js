@@ -50,6 +50,23 @@ app.use('/api/admin', require('./routes/admin'))
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', time: new Date() }))
 
+// Public stats for landing page
+app.get('/api/public/stats', async (_req, res) => {
+  try {
+    const User = require('./models/User')
+    const Order = require('./models/Order')
+    const Medicine = require('./models/Medicine')
+    const [customers, orders, medicines] = await Promise.all([
+      User.countDocuments({ role: 'customer' }),
+      Order.countDocuments(),
+      Medicine.countDocuments({ inStock: true }),
+    ])
+    const today = new Date(); today.setHours(0,0,0,0)
+    const ordersToday = await Order.countDocuments({ createdAt: { $gte: today } })
+    res.json({ customers, orders, medicines, ordersToday })
+  } catch { res.json({ customers: 0, orders: 0, medicines: 0, ordersToday: 0 }) }
+})
+
 // Socket.io
 io.on('connection', (socket) => {
   // Customer joins their personal room for order updates

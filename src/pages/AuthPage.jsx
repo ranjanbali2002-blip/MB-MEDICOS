@@ -326,26 +326,6 @@ export default function AuthPage({ onSuccess }) {
             </motion.button>
           </form>
 
-          {/* Demo accounts */}
-          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
-            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-3">Quick demo access</p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { label: 'Customer', identifier: 'customer@medidrop.com', pw: 'Customer@123' },
-                { label: 'Driver', identifier: 'driver@medidrop.com', pw: 'Driver@123' },
-              ].map(d => (
-                <motion.button
-                  key={d.label}
-                  type="button"
-                  onClick={() => demoLogin(d.identifier, d.pw)}
-                  whileTap={{ scale: 0.96 }}
-                  className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-primary-50 dark:hover:bg-slate-600 transition-colors"
-                >
-                  {d.label}
-                </motion.button>
-              ))}
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>
