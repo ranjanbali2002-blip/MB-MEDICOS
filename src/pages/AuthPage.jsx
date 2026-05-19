@@ -1,0 +1,215 @@
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Mail, Lock, User, Phone, Eye, EyeOff, Loader2, ShoppingBag, AtSign } from 'lucide-react'
+import { useAuth } from '../contexts/AuthContext'
+import { useToast } from '../components/ui/Toast'
+
+const roles = [
+  { id: 'customer', label: 'Customer', emoji: '🛒', desc: 'Order medicines' },
+  { id: 'driver', label: 'Driver', emoji: '🏍️', desc: 'Deliver orders' },
+]
+
+export default function AuthPage({ onSuccess }) {
+  const [mode, setMode] = useState('login')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ name: '', identifier: '', email: '', password: '', phone: '', role: 'customer' })
+  const { login, register } = useAuth()
+  const addToast = useToast()
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const user = mode === 'login'
+        ? await login(form.identifier, form.password)
+        : await register({ ...form, email: form.identifier })
+      addToast({ message: `Welcome${user.name ? ', ' + user.name.split(' ')[0] : ''}! 👋`, type: 'success' })
+      onSuccess(user)
+    } catch (err) {
+      addToast({ message: err.response?.data?.message || 'Something went wrong', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const demoLogin = async (identifier, password) => {
+    setLoading(true)
+    try {
+      const user = await login(identifier, password)
+      addToast({ message: `Logged in as ${user.name}`, type: 'success' })
+      onSuccess(user)
+    } catch {
+      addToast({ message: 'Demo login failed', type: 'error' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        {/* Logo */}
+        <div className="text-center mb-8">
+          <motion.div
+            whileHover={{ scale: 1.05 }}
+            className="inline-flex items-center gap-2 mb-3"
+          >
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center shadow-glow">
+              <ShoppingBag className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-gradient">MB-Medicos</span>
+          </motion.div>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">
+            {mode === 'login' ? 'Welcome back — sign in to continue' : 'Create your account to get started'}
+          </p>
+        </div>
+
+        {/* Card */}
+        <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-card p-8">
+          {/* Tab switch */}
+          <div className="flex bg-slate-100 dark:bg-slate-700 rounded-2xl p-1 mb-6">
+            {['login', 'register'].map(m => (
+              <motion.button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-colors capitalize ${
+                  mode === m
+                    ? 'bg-white dark:bg-slate-600 text-slate-900 dark:text-white shadow-soft'
+                    : 'text-slate-500 dark:text-slate-400'
+                }`}
+                whileTap={{ scale: 0.97 }}
+              >
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
+              </motion.button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <AnimatePresence mode="wait">
+              {mode === 'register' && (
+                <motion.div
+                  key="register-fields"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="space-y-4 overflow-hidden"
+                >
+                  <Field icon={<User className="w-4 h-4" />} placeholder="Full name" value={form.name} onChange={v => set('name', v)} required />
+                  <Field icon={<Phone className="w-4 h-4" />} placeholder="Phone number" value={form.phone} onChange={v => set('phone', v)} type="tel" />
+
+                  {/* Role selector */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {roles.map(r => (
+                      <motion.button
+                        key={r.id}
+                        type="button"
+                        onClick={() => set('role', r.id)}
+                        whileTap={{ scale: 0.97 }}
+                        className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                          form.role === r.id
+                            ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                            : 'border-slate-200 dark:border-slate-600'
+                        }`}
+                      >
+                        <div className="text-xl mb-1">{r.emoji}</div>
+                        <div className="font-semibold text-sm text-slate-800 dark:text-white">{r.label}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{r.desc}</div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <Field
+              icon={<AtSign className="w-4 h-4" />}
+              placeholder={mode === 'login' ? 'Email or Username' : 'Email address'}
+              value={form.identifier}
+              onChange={v => set('identifier', v)}
+              type={mode === 'register' ? 'email' : 'text'}
+              required
+            />
+
+            {/* Password field */}
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={form.password}
+                onChange={e => set('password', e.target.value)}
+                required
+                minLength={6}
+                className="w-full pl-10 pr-10 py-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={loading}
+              whileHover={{ scale: 1.01, y: -1 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full py-3 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 text-white font-semibold text-sm shadow-glow hover:shadow-glow transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              {mode === 'login' ? 'Sign In' : 'Create Account'}
+            </motion.button>
+          </form>
+
+          {/* Demo accounts */}
+          <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700">
+            <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-3">Quick demo access</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { label: 'Customer', identifier: 'customer@medidrop.com', pw: 'Customer@123' },
+                { label: 'Driver', identifier: 'driver@medidrop.com', pw: 'Driver@123' },
+              ].map(d => (
+                <motion.button
+                  key={d.label}
+                  type="button"
+                  onClick={() => demoLogin(d.identifier, d.pw)}
+                  whileTap={{ scale: 0.96 }}
+                  className="py-2 px-3 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium hover:bg-primary-50 dark:hover:bg-slate-600 transition-colors"
+                >
+                  {d.label}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+function Field({ icon, placeholder, value, onChange, type = 'text', required }) {
+  return (
+    <div className="relative">
+      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>
+      <input
+        type={type}
+        placeholder={placeholder}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        required={required}
+        className="w-full pl-10 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm transition-all"
+      />
+    </div>
+  )
+}
