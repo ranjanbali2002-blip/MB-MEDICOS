@@ -4,7 +4,8 @@ import {
   TrendingUp, TrendingDown, Package, Truck, Users, ShoppingBag,
   Plus, Edit, Trash2, AlertTriangle, CheckCircle, Clock, Search,
   Filter, Download, MoreVertical, Eye, Bell, Sun, Moon, ChevronUp,
-  RefreshCw, XCircle, Loader2
+  RefreshCw, XCircle, Loader2, CreditCard, Wallet, Phone, Mail,
+  MapPin, Star, Calendar
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -36,6 +37,12 @@ function useAdminDrivers() {
 }
 function useAdminMedicines() {
   return useQuery({ queryKey: ['admin-medicines'], queryFn: () => medicinesApi.getAll({ limit: 50 }).then(r => r.data), staleTime: 30000 })
+}
+function useAdminCustomers() {
+  return useQuery({ queryKey: ['admin-customers'], queryFn: () => adminApi.getCustomers().then(r => r.data), staleTime: 30000 })
+}
+function useAdminPayments(page = 1) {
+  return useQuery({ queryKey: ['admin-payments', page], queryFn: () => adminApi.getPayments({ page, limit: 30 }).then(r => r.data), staleTime: 15000 })
 }
 
 const CHART_COLORS = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#8B5CF6']
@@ -646,6 +653,207 @@ function SettingsTab() {
   )
 }
 
+// ─── CUSTOMERS TAB ─────────────────────────────────────────────────────────────
+function CustomersTab() {
+  const { data: customers = [], isLoading } = useAdminCustomers()
+  const [search, setSearch] = useState('')
+  const filtered = customers.filter(c =>
+    c.name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.email?.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone?.includes(search)
+  )
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email or phone..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary-500" />
+        </div>
+        <Badge variant="blue">{filtered.length} customers</Badge>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
+      ) : filtered.length === 0 ? (
+        <Card><div className="text-center py-12 text-slate-400"><Users className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>No customers yet</p></div></Card>
+      ) : (
+        <div className="grid gap-4">
+          {filtered.map(c => (
+            <Card key={c._id} hover>
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-400 to-accent-500 flex items-center justify-center text-white font-black text-lg flex-shrink-0">
+                  {c.name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <div>
+                      <h3 className="font-bold text-slate-800 dark:text-white">{c.name}</h3>
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <span className="flex items-center gap-1 text-xs text-slate-500"><Mail className="w-3 h-3" />{c.email}</span>
+                        <span className="flex items-center gap-1 text-xs text-slate-500"><Phone className="w-3 h-3" />{c.phone || '—'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 text-right">
+                      <div>
+                        <p className="text-xs text-slate-400">Total Spent</p>
+                        <p className="font-black text-primary-600">₹{c.totalSpent?.toLocaleString() || 0}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-400">Orders</p>
+                        <p className="font-black text-slate-800 dark:text-white">{c.totalOrders}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 flex-wrap">
+                    {c.addresses?.[0] && (
+                      <span className="flex items-center gap-1 text-xs text-slate-400"><MapPin className="w-3 h-3" />{c.addresses[0].address}</span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs text-slate-400"><Calendar className="w-3 h-3" />Joined {new Date(c.createdAt).toLocaleDateString('en-IN')}</span>
+                    {c.lastOrder && <span className="flex items-center gap-1 text-xs text-slate-400"><Clock className="w-3 h-3" />Last order {new Date(c.lastOrder).toLocaleDateString('en-IN')}</span>}
+                    <Badge variant={c.isEmailVerified ? 'green' : 'yellow'}>{c.isEmailVerified ? 'Verified' : 'Unverified'}</Badge>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── PAYMENTS TAB ───────────────────────────────────────────────────────────────
+function PaymentsTab() {
+  const [page, setPage] = useState(1)
+  const [view, setView] = useState('transactions')
+  const { data, isLoading } = useAdminPayments(page)
+  const orders = data?.orders || []
+  const payouts = data?.driverPayouts || []
+  const total = data?.total || 0
+
+  const methodIcon = (m) => {
+    if (m === 'upi') return '📱'
+    if (m === 'card') return '💳'
+    return '💵'
+  }
+  const methodLabel = (m) => ({ upi: 'UPI / GPay', card: 'Card', cod: 'Cash on Delivery' }[m] || m)
+
+  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0)
+  const totalPayouts = payouts.reduce((s, p) => s + p.totalPayout, 0)
+
+  return (
+    <div className="space-y-4">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { label: 'Total Revenue', value: `₹${totalRevenue.toLocaleString()}`, icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-50 dark:bg-green-900/20' },
+          { label: 'Total Transactions', value: total, icon: CreditCard, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+          { label: 'Driver Payouts', value: `₹${Math.round(totalPayouts).toLocaleString()}`, icon: Truck, color: 'text-purple-500', bg: 'bg-purple-50 dark:bg-purple-900/20' },
+          { label: 'Net Profit', value: `₹${Math.round(totalRevenue - totalPayouts).toLocaleString()}`, icon: Wallet, color: 'text-orange-500', bg: 'bg-orange-50 dark:bg-orange-900/20' },
+        ].map(s => (
+          <Card key={s.label}>
+            <div className={`w-10 h-10 ${s.bg} rounded-2xl flex items-center justify-center mb-3`}>
+              <s.icon className={`w-5 h-5 ${s.color}`} />
+            </div>
+            <p className="text-xl font-black text-slate-800 dark:text-white">{s.value}</p>
+            <p className="text-xs text-slate-400 mt-1">{s.label}</p>
+          </Card>
+        ))}
+      </div>
+
+      {/* Toggle */}
+      <div className="flex bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 w-fit gap-1">
+        {['transactions', 'payouts'].map(v => (
+          <button key={v} onClick={() => setView(v)}
+            className={`px-4 py-2 rounded-xl text-sm font-semibold capitalize transition-all ${view === v ? 'bg-white dark:bg-slate-700 text-primary-600 shadow-sm' : 'text-slate-500'}`}>
+            {v === 'transactions' ? '💳 Transactions' : '🏍️ Driver Payouts'}
+          </button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>
+      ) : view === 'transactions' ? (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-100 dark:border-slate-700">
+                  {['Order ID', 'Customer', 'Amount', 'Method', 'Status', 'Date'].map(h => (
+                    <th key={h} className="text-left py-3 px-3 text-xs font-bold text-slate-400 uppercase tracking-wide">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50 dark:divide-slate-700/50">
+                {orders.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center py-12 text-slate-400">No transactions yet</td></tr>
+                ) : orders.map(o => (
+                  <tr key={o._id} className="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
+                    <td className="py-3 px-3 font-mono text-xs font-bold text-primary-600">{o.orderId || o._id?.toString().slice(-6).toUpperCase()}</td>
+                    <td className="py-3 px-3">
+                      <p className="font-semibold text-slate-700 dark:text-slate-200">{o.customer?.name || '—'}</p>
+                      <p className="text-xs text-slate-400">{o.customer?.phone || o.customer?.email || '—'}</p>
+                    </td>
+                    <td className="py-3 px-3 font-black text-slate-800 dark:text-white">₹{o.total?.toLocaleString()}</td>
+                    <td className="py-3 px-3">
+                      <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                        {methodIcon(o.paymentMethod)} {methodLabel(o.paymentMethod)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <Badge variant={o.status === 'delivered' ? 'green' : o.status === 'cancelled' ? 'red' : 'blue'}>
+                        {o.status}
+                      </Badge>
+                    </td>
+                    <td className="py-3 px-3 text-xs text-slate-400">{new Date(o.createdAt).toLocaleDateString('en-IN')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {total > 30 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+              <p className="text-xs text-slate-400">Showing {(page-1)*30+1}–{Math.min(page*30, total)} of {total}</p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}>Prev</Button>
+                <Button size="sm" variant="outline" onClick={() => setPage(p => p+1)} disabled={page*30 >= total}>Next</Button>
+              </div>
+            </div>
+          )}
+        </Card>
+      ) : (
+        <Card>
+          <h3 className="font-bold text-slate-800 dark:text-white mb-4">Driver Payout Summary</h3>
+          <p className="text-xs text-slate-400 mb-4">Payout = ₹30 base + 5% of order value per delivery</p>
+          {payouts.length === 0 ? (
+            <div className="text-center py-12 text-slate-400"><Truck className="w-12 h-12 mx-auto mb-3 opacity-30" /><p>No payouts yet</p></div>
+          ) : (
+            <div className="space-y-3">
+              {payouts.map((p, i) => (
+                <div key={i} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-lg">🏍️</div>
+                    <div>
+                      <p className="font-bold text-slate-800 dark:text-white">{p.driver?.name}</p>
+                      <p className="text-xs text-slate-400">{p.driver?.phone} · {p.deliveries} deliveries</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-black text-purple-600">₹{p.totalPayout.toLocaleString()}</p>
+                    <p className="text-xs text-slate-400">Total payout</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      )}
+    </div>
+  )
+}
+
 // ─── MAIN ADMIN DASHBOARD ──────────────────────────────────────────────────────
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('Dashboard')
@@ -659,6 +867,8 @@ export default function AdminDashboard() {
       case 'Inventory': return <InventoryTab />
       case 'Drivers': return <DriversTab />
       case 'Orders': return <OrdersTab />
+      case 'Customers': return <CustomersTab />
+      case 'Payments': return <PaymentsTab />
       case 'Settings': return <SettingsTab />
       default: return (
         <div className="flex flex-col items-center justify-center h-96 text-slate-400">

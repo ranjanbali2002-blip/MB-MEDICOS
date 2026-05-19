@@ -166,4 +166,75 @@ router.patch('/orders/:id/assign', async (req, res) => {
   }
 })
 
+// GET /api/admin/customers — all customers with order stats
+router.get('/customers', async (req, res) => {
+  try {
+    const customers = await User.find({ role: 'customer' }).select('-password').sort('-createdAt')
+    const customerIds = customers.map(c => c._id)
+
+    const orderStats = await Order.aggregate([
+      { $match: { customer: { $in: customerIds } } },
+      { $group: {
+        _id: '$customer',
+        totalOrders: { $sum: 1 },
+        totalSpent: { $sum: '$total' },
+        lastOrder: { $max: '$createdAt' },
+      }}
+    ])
+
+    const statsMap = {}
+    orderStats.forEach(s => { statsMap[s._id.toString()] = s })
+
+    const result = customers.map(c => ({
+      ...c.toObject(),
+      totalOrders: statsMap[c._id.toString()]?.totalOrders || 0,
+      totalSpent: statsMap[c._id.toString()]?.totalSpent || 0,
+      lastOrder: statsMap[c._id.toString()]?.lastOrder || null,
+    }))
+
+    res.json(result)
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
+// GET /api/admin/payments — all payment records + driver payouts
+router.get('/payments', async (req, res) => {
+  try {
+    const { page = 1, limit = 30 } = req.query
+    const [orders, total] = await Promise.all([
+      Order.find()
+        .populate('customer', 'name email phone')
+        .populate('driver', 'name phone')
+        .select('orderId total subtotal deliveryFee discount paymentMethod status createdAt customer driver items')
+        .sort('-createdAt')
+        .skip((page - 1) * limit)
+        .limit(parseInt(limit)),
+      Order.countDocuments(),
+    ])
+
+    // Driver payout summary (₹30 per delivery as base)
+    const driverPayouts = await Order.aggregate([
+      { $match: { status: 'delivered', driver: { $ne: null } } },
+      { $group: {
+        _id: '$driver',
+        deliveries: { $sum: 1 },
+        totalPayout: { $sum: { $add: [30, { $multiply: ['$total', 0.05] }] } },
+      }}
+    ])
+    const drivers = await User.find({ role: 'driver' }).select('name phone').lean()
+    const driverMap = {}
+    drivers.forEach(d => { driverMap[d._id.toString()] = d })
+    const payouts = driverPayouts.map(p => ({
+      driver: driverMap[p._id?.toString()] || { name: 'Unknown', phone: '—' },
+      deliveries: p.deliveries,
+      totalPayout: Math.round(p.totalPayout),
+    }))
+
+    res.json({ orders, total, page: parseInt(page), driverPayouts: payouts })
+  } catch (err) {
+    res.status(500).json({ message: err.message })
+  }
+})
+
 module.exports = router

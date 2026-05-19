@@ -2,17 +2,17 @@ import { motion } from 'framer-motion'
 import {
   LayoutDashboard, ShoppingBag, Package, Users, Truck,
   BarChart3, Settings, ChevronLeft, ChevronRight, LogOut,
-  Bell, HelpCircle
+  Bell, HelpCircle, CreditCard
 } from 'lucide-react'
 import clsx from 'clsx'
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, badge: null },
-  { label: 'Orders', icon: ShoppingBag, badge: '12' },
-  { label: 'Inventory', icon: Package, badge: '3' },
+  { label: 'Orders', icon: ShoppingBag, badge: null },
+  { label: 'Inventory', icon: Package, badge: null },
   { label: 'Drivers', icon: Truck, badge: null },
   { label: 'Customers', icon: Users, badge: null },
-  { label: 'Reports', icon: BarChart3, badge: null },
+  { label: 'Payments', icon: CreditCard, badge: null },
   { label: 'Settings', icon: Settings, badge: null },
 ]
 

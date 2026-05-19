@@ -115,6 +115,8 @@ export const adminApi = {
   getRevenueChart: () => api.get('/admin/revenue-chart'),
   getOrders: (params) => api.get('/admin/orders', { params }),
   getDrivers: () => api.get('/admin/drivers'),
+  getCustomers: () => api.get('/admin/customers'),
+  getPayments: (params) => api.get('/admin/payments', { params }),
   verifyDriver: (id, isVerified) => api.patch(`/admin/drivers/${id}/verify`, { isVerified }),
   assignDriver: (orderId, driverId) => api.patch(`/admin/orders/${orderId}/assign`, { driverId }),
 }
